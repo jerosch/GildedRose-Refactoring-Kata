@@ -1,55 +1,86 @@
 function Item(name, sell_in, quality) {
-  this.name = name;
-  this.sell_in = sell_in;
-  this.quality = quality;
+    this.name = name;
+    this.sell_in = sell_in;
+    this.quality = quality;
 }
 
-var items = []
+var items = [];
 
 function update_quality() {
-  for (var i = 0; i < items.length; i++) {
-    if (items[i].name != 'Aged Brie' && items[i].name != 'Backstage passes to a TAFKAL80ETC concert') {
-      if (items[i].quality > 0) {
-        if (items[i].name != 'Sulfuras, Hand of Ragnaros') {
-          items[i].quality = items[i].quality - 1
-        }
-      }
-    } else {
-      if (items[i].quality < 50) {
-        items[i].quality = items[i].quality + 1
-        if (items[i].name == 'Backstage passes to a TAFKAL80ETC concert') {
-          if (items[i].sell_in < 11) {
-            if (items[i].quality < 50) {
-              items[i].quality = items[i].quality + 1
+
+    function updateItem(item) {
+
+        var updater = {
+            AGED_BRIE: {
+                updateQualityBefore: increaseQuality,
+                updateSellIn: decreaseSellIn,
+                updateQualityAfter: increaseQuality
+            },
+            BACKSTAGE_PASSES: {
+                updateQualityBefore: function () {
+                    if (item.sell_in < 6) {
+                        increaseQuality(3);
+                    } else if (item.sell_in < 11) {
+                        increaseQuality(2);
+                    } else {
+                        increaseQuality();
+                    }
+                },
+                updateSellIn: decreaseSellIn,
+                updateQualityAfter: function() { decreaseQuality(item.quality) }
+            },
+            NOOP: {
+                updateQualityBefore: noop,
+                updateSellIn: noop,
+                updateQualityAfter: noop
+            },
+            DEFAULT: {
+                updateQualityBefore: decreaseQuality,
+                updateSellIn: decreaseSellIn,
+                updateQualityAfter: decreaseQuality
             }
-          }
-          if (items[i].sell_in < 6) {
-            if (items[i].quality < 50) {
-              items[i].quality = items[i].quality + 1
+        };
+
+        function updaterFor(item) {
+            switch (item.name) {
+                case 'Aged Brie':
+                    return updater.AGED_BRIE;
+                case 'Backstage passes to a TAFKAL80ETC concert':
+                    return updater.BACKSTAGE_PASSES;
+                case 'Sulfuras, Hand of Ragnaros':
+                    return updater.NOOP;
+                default:
+                    return updater.DEFAULT;
             }
-          }
         }
-      }
-    }
-    if (items[i].name != 'Sulfuras, Hand of Ragnaros') {
-      items[i].sell_in = items[i].sell_in - 1;
-    }
-    if (items[i].sell_in < 0) {
-      if (items[i].name != 'Aged Brie') {
-        if (items[i].name != 'Backstage passes to a TAFKAL80ETC concert') {
-          if (items[i].quality > 0) {
-            if (items[i].name != 'Sulfuras, Hand of Ragnaros') {
-              items[i].quality = items[i].quality - 1
-            }
-          }
-        } else {
-          items[i].quality = items[i].quality - items[i].quality
+
+        function noop() {
         }
-      } else {
-        if (items[i].quality < 50) {
-          items[i].quality = items[i].quality + 1
+
+
+        function increaseQuality(delta) {
+            delta = delta || 1;
+            item.quality = Math.min(item.quality + delta, 50);
         }
-      }
+
+        function decreaseQuality(delta) {
+            delta = delta || 1;
+            item.quality = Math.max(item.quality - delta, 0);
+        }
+
+        function decreaseSellIn() {
+            item.sell_in -= 1;
+        }
+
+        var updaterForItem = updaterFor(item);
+        updaterForItem.updateQualityBefore();
+        updaterForItem.updateSellIn();
+        if (item.sell_in < 0) {
+            updaterForItem.updateQualityAfter();
+        }
+
     }
-  }
+
+    items.forEach(updateItem);
+
 }
